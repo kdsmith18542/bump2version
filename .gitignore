@@ -9,6 +9,10 @@ __pycache__
 .cache
 dist
 
+# Go
+/bumpx
+*.exe
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
