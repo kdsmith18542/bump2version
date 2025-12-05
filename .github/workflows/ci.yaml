@@ -10,6 +10,29 @@ defaults:
 
 jobs:
 
+  # Go build and test for bumpx
+  go:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+      - name: Build
+        run: go build -v ./...
+      - name: Test
+        run: go test -v ./...
+      - name: Build binary
+        run: go build -o bumpx ./cmd/bumpx/
+
+  # Legacy Python tests for bump2version
   tox:
     strategy:
       fail-fast: false

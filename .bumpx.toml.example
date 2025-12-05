@@ -1,0 +1,52 @@
+# Example bumpx configuration file
+# This file shows all available options with their default values
+
+[project]
+name = "my-monorepo"
+current_version = "1.2.3"
+version_scheme = "semver"  # "semver" | "calver:YYYY.MM.DD" | "custom:<template>"
+
+# File targets - each section defines files to update
+[files]
+
+# Example: Rust project
+[files.cargo]
+paths = ["backend/Cargo.toml"]
+type = "cargo"
+
+# Example: Node.js/NPM project
+[files.npm_app]
+paths = ["frontend/package.json"]
+type = "npm"
+
+# Example: Go module
+[files.go_module]
+paths = ["tools/go.mod"]
+type = "gomod"
+
+# Example: Python project
+[files.python_lib]
+paths = ["python-lib/pyproject.toml"]
+type = "pyproject"
+
+# Example: Generic regex-based replacement
+[files.generic_version_txt]
+paths = ["VERSION.txt"]
+type = "regex"
+pattern = '^version=(?P<version>[0-9A-Za-z\.\-\+]+)$'
+replacement = 'version={version}'  # {version} placeholder
+
+# Git integration settings
+[git]
+enable = true
+commit = true
+commit_message = "chore(release): {version}"
+tag = true
+tag_name = "v{version}"
+tag_message = "Release {version}"
+allow_dirty = false
+
+# Hook commands (optional)
+[hooks]
+pre_bump = ""   # e.g., "scripts/pre_bump.sh"
+post_bump = ""  # e.g., "scripts/post_bump.sh"
