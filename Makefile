@@ -1,25 +1,44 @@
+# bumpx Makefile
+
+.PHONY: build test lint clean install
+
+# Default target
+all: build
+
+# Build the binary
+build:
+	go build -o bumpx ./cmd/bumpx/
+
+# Run tests
 test:
-	docker-compose build test
-	docker-compose run test
+	go test -v ./...
 
-local_test:
-	PYTHONPATH=. pytest tests/
+# Run tests with coverage
+test-coverage:
+	go test -v -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
 
+# Format code
+fmt:
+	go fmt ./...
+
+# Lint code (requires golangci-lint)
 lint:
-	pip install pylint
-	pylint bumpversion
+	golangci-lint run
 
-debug_test:
-	docker-compose build test
-	docker-compose run test /bin/bash
-
+# Clean build artifacts
 clean:
-	rm -rf dist build *.egg-info
+	rm -f bumpx bumpx.exe
+	rm -f coverage.out coverage.html
 
-dist:	clean
-	python3 setup.py sdist bdist_wheel
+# Install to GOPATH/bin
+install:
+	go install ./cmd/bumpx/
 
-upload:
-	twine upload dist/*
-
-.PHONY: dist upload test debug_test
+# Build for multiple platforms
+build-all: clean
+	GOOS=linux GOARCH=amd64 go build -o bumpx-linux-amd64 ./cmd/bumpx/
+	GOOS=linux GOARCH=arm64 go build -o bumpx-linux-arm64 ./cmd/bumpx/
+	GOOS=darwin GOARCH=amd64 go build -o bumpx-darwin-amd64 ./cmd/bumpx/
+	GOOS=darwin GOARCH=arm64 go build -o bumpx-darwin-arm64 ./cmd/bumpx/
+	GOOS=windows GOARCH=amd64 go build -o bumpx-windows-amd64.exe ./cmd/bumpx/
