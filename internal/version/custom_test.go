@@ -110,10 +110,10 @@ func TestCustomVersionBump(t *testing.T) {
 			want:    "v2.0.0",
 		},
 		{
-			name:    "bump build increments last numeric suffix",
+			name:    "bump build increments trailing number",
 			version: "1.2.3",
 			part:    "build",
-			want:    "1.2.4", // The last .3 is treated as suffix
+			want:    "1.2.4", // bumpNumericSuffix matches ".3" at end
 		},
 		{
 			name:    "bump build with explicit suffix",
@@ -125,7 +125,7 @@ func TestCustomVersionBump(t *testing.T) {
 			name:    "bump release alias",
 			version: "1.0.0",
 			part:    "release",
-			want:    "1.0.1", // The last .0 is treated as suffix
+			want:    "1.0.1", // bumpNumericSuffix matches ".0" at end
 		},
 		{
 			name:    "invalid part",
