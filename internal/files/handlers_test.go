@@ -121,7 +121,7 @@ func TestRegexHandler(t *testing.T) {
 		t.Fatalf("Failed to write VERSION: %v", err)
 	}
 
-	handler, err := NewRegexHandlerWithPatterns(`version=(?P<version>[0-9\.]+)`, "version={version}")
+	handler, err := NewRegexHandlerWithPatterns(`version=(?P<version>\d+\.\d+\.\d+)`, "version={version}")
 	if err != nil {
 		t.Fatalf("Failed to create handler: %v", err)
 	}

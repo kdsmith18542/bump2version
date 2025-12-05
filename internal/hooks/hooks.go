@@ -29,6 +29,9 @@ type HookContext struct {
 }
 
 // Run executes a hook command.
+// Note: Hook commands are executed via shell and come from the config file.
+// Ensure the config file is trusted as commands are executed without additional validation.
+// Hook commands should be used for trusted local scripts only.
 func (r *Runner) Run(command string, ctx *HookContext) error {
 	if command == "" {
 		return nil

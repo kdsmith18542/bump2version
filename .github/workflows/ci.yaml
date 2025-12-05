@@ -4,6 +4,10 @@ on:
   - push
   - pull_request
 
+# Set minimal permissions for security
+permissions:
+  contents: read
+
 defaults:
   run:
     shell: bash
@@ -12,6 +16,8 @@ jobs:
 
   # Go build and test for bumpx
   go:
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -34,6 +40,8 @@ jobs:
 
   # Legacy Python tests for bump2version
   tox:
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:

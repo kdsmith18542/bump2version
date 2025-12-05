@@ -60,6 +60,8 @@ func (h *RegexHandler) Read(path string) (string, error) {
 }
 
 // Write writes the new version to a file using the regex pattern.
+// Note: The replacement string uses literal replacement except for regex $ syntax.
+// The {version} placeholder is replaced with the new version before regex substitution.
 func (h *RegexHandler) Write(path, oldVersion, newVersion string, dryRun bool) error {
 	content, err := os.ReadFile(path)
 	if err != nil {

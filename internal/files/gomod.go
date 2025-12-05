@@ -8,6 +8,11 @@ import (
 )
 
 // GoModHandler handles go.mod files.
+// Note: Go modules typically use git tags for versioning, not a version field in go.mod.
+// This handler uses a non-standard "// version: x.y.z" comment convention for projects
+// that want to track version in go.mod alongside git tags. This is primarily useful for
+// monorepos or when you want a version string embedded in go.mod for tooling purposes.
+// For standard Go projects, consider using git tags or the generic regex handler instead.
 type GoModHandler struct{}
 
 var goModVersionRegex = regexp.MustCompile(`(?m)^// version: (.+)$`)
