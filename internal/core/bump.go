@@ -15,15 +15,16 @@ import (
 
 // BumpOptions contains options for the bump operation.
 type BumpOptions struct {
-	DryRun    bool
-	NoGit     bool
-	GitCommit bool // explicit flag to enable commit (overrides config)
-	GitTag    bool // explicit flag to enable tag (overrides config)
-	NoTag     bool
-	NoCommit  bool
-	Message   string
-	TagName   string
-	JSON      bool
+	DryRun     bool
+	NoGit      bool
+	GitCommit  bool // explicit flag to enable commit (overrides config)
+	GitTag     bool // explicit flag to enable tag (overrides config)
+	NoTag      bool
+	NoCommit   bool
+	AllowDirty bool // allow operation on dirty working directory (overrides config)
+	Message    string
+	TagName    string
+	JSON       bool
 }
 
 // Bumper handles version bumping operations.
@@ -87,7 +88,9 @@ func (b *Bumper) Bump(part string, opts BumpOptions) (*output.BumpResult, error)
 	}
 
 	// Check git status
-	if b.config.Git.Enable && !opts.NoGit && !b.config.Git.AllowDirty {
+	// Allow dirty if: config allows it OR cli flag is set
+	allowDirty := b.config.Git.AllowDirty || opts.AllowDirty
+	if b.config.Git.Enable && !opts.NoGit && !allowDirty {
 		clean, err := b.git.IsClean()
 		if err != nil {
 			return nil, fmt.Errorf("failed to check git status: %w", err)

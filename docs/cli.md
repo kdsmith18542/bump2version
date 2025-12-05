@@ -31,11 +31,14 @@ For CalVer: date, build
 **Options:**
 - `-n, --dry-run`: Don't write any files, just pretend
 - `--no-git`: Ignore git settings in config
+- `--git-commit`: Create a git commit (overrides config)
+- `--git-tag`: Create a git tag (overrides config)
 - `--no-tag`: Do not create a tag
 - `--no-commit`: Do not commit
+- `--allow-dirty`: Allow operation on dirty working directory
 - `-m, --message`: Override commit message
 - `--tag-name`: Override tag name
-- `--json`: Output in JSON format
+- `--format`: Output format: human or json
 - `-c, --config`: Config file (default is .bumpx.toml)
 - `-h, --help`: Help for bump command
 
@@ -90,11 +93,8 @@ bumpx validate
 ## Exit Codes
 
 - 0: Success
-- 1: Generic failure
-- 2: Configuration error (invalid config, missing fields)
-- 3: Version parsing/bumping error
-- 4: File IO or pattern-matching error
-- 5: Git-related error (dirty repo, commit/tag failure)
+- 1: Usage or validation error
+- 2: Operation failed (file I/O, parse errors, git errors)
 
 ## Examples
 
