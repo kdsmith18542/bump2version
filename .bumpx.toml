@@ -1,0 +1,32 @@
+# bumpx configuration for this project
+[project]
+name = "bumpx"
+current_version = "0.1.0"
+version_scheme = "semver"
+
+# Go module file
+[files.gomod]
+paths = ["go.mod"]
+type = "gomod"
+
+# Main CLI (version constant)
+[files.main]
+paths = ["cmd/bumpx/main.go"]
+type = "regex"
+pattern = 'Version = "(?P<version>[0-9A-Za-z.\-\+]+)"'
+replacement = 'Version = "{version}"'
+
+# Git settings
+[git]
+enable = true
+commit = true
+commit_message = "chore(release): v{version}"
+tag = true
+tag_name = "v{version}"
+tag_message = "Release v{version}"
+allow_dirty = false
+
+# Hooks (optional)
+[hooks]
+pre_bump = ""
+post_bump = ""
