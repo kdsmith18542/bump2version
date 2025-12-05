@@ -7,10 +7,16 @@ import (
 
 // Config represents the main configuration for bumpx.
 type Config struct {
-	Project ProjectConfig         `toml:"project"`
-	Files   map[string]FileConfig `toml:"files"`
-	Git     GitConfig             `toml:"git"`
-	Hooks   HooksConfig           `toml:"hooks"`
+	Project  ProjectConfig            `toml:"project"`
+	Files    FilesConfig              `toml:"files"`
+	Handlers map[string]HandlerConfig `toml:"handlers,omitempty"` // optional detailed handlers
+	Git      GitConfig                `toml:"git"`
+	Hooks    HooksConfig              `toml:"hooks"`
+}
+
+// FilesConfig represents the files section per spec.
+type FilesConfig struct {
+	Paths []string `toml:"paths"`
 }
 
 // ProjectConfig represents the project-level configuration.
@@ -20,8 +26,8 @@ type ProjectConfig struct {
 	VersionScheme  string `toml:"version_scheme"` // "semver" | "calver:YYYY.MM.DD" | "custom:<template>"
 }
 
-// FileConfig represents the configuration for a file target.
-type FileConfig struct {
+// HandlerConfig represents the configuration for a specific file handler.
+type HandlerConfig struct {
 	Paths       []string `toml:"paths"`
 	Type        string   `toml:"type"`                  // "cargo", "npm", "gomod", "pyproject", "dotnet", "regex"
 	Pattern     string   `toml:"pattern,omitempty"`     // For regex type
@@ -64,12 +70,15 @@ func NewDefaultConfig() *Config {
 		Project: ProjectConfig{
 			VersionScheme: "semver",
 		},
-		Files: make(map[string]FileConfig),
+		Files: FilesConfig{
+			Paths: []string{},
+		},
+		Handlers: make(map[string]HandlerConfig),
 		Git: GitConfig{
 			Enable:        false,
-			Commit:        true,
+			Commit:        false, // default per spec: no side-effects
 			CommitMessage: "chore(release): {version}",
-			Tag:           true,
+			Tag:           false, // default per spec: no side-effects
 			TagName:       "v{version}",
 			TagMessage:    "Release {version}",
 			AllowDirty:    false,

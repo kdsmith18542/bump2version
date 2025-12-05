@@ -29,7 +29,7 @@ func GetHandler(fileType string) (Handler, error) {
 	case "dotnet":
 		return &DotNetHandler{}, nil
 	case "regex":
-		return nil, fmt.Errorf("regex handler requires pattern and replacement; use NewRegexHandler")
+		return nil, fmt.Errorf("regex handler requires pattern and replacement; use NewRegexHandlerWithPatterns")
 	default:
 		return nil, fmt.Errorf("unknown file type: %s", fileType)
 	}
@@ -68,4 +68,14 @@ func matchFilename(path, filename string) bool {
 		return path[len(path)-len(filename):] == filename
 	}
 	return false
+}
+
+// DetectHandler auto-detects and returns the appropriate handler for a file path.
+func DetectHandler(path string) (Handler, error) {
+	fileType := DetectFileType(path)
+	if fileType == "regex" {
+		// For unknown file types, use a generic version pattern
+		return NewRegexHandlerWithPatterns(`"version"\s*:\s*"([^"]+)"`, `"version": "{version}"`)
+	}
+	return GetHandler(fileType)
 }

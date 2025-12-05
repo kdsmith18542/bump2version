@@ -15,13 +15,15 @@ import (
 
 // BumpOptions contains options for the bump operation.
 type BumpOptions struct {
-	DryRun   bool
-	NoGit    bool
-	NoTag    bool
-	NoCommit bool
-	Message  string
-	TagName  string
-	JSON     bool
+	DryRun    bool
+	NoGit     bool
+	GitCommit bool // explicit flag to enable commit (overrides config)
+	GitTag    bool // explicit flag to enable tag (overrides config)
+	NoTag     bool
+	NoCommit  bool
+	Message   string
+	TagName   string
+	JSON      bool
 }
 
 // Bumper handles version bumping operations.
@@ -46,8 +48,15 @@ func NewBumper(cfg *config.Config, configPath string, jsonMode bool) *Bumper {
 
 // Bump performs the version bump operation.
 func (b *Bumper) Bump(part string, opts BumpOptions) (*output.BumpResult, error) {
-	// Parse current version
+	// Parse current version (discover from files if not set)
 	currentVersion := b.config.Project.CurrentVersion
+	if currentVersion == "" {
+		discovered, err := b.discoverVersion()
+		if err != nil {
+			return nil, fmt.Errorf("no current_version in config and failed to discover: %w", err)
+		}
+		currentVersion = discovered
+	}
 	scheme := b.config.GetVersionScheme()
 
 	ver, err := version.Parse(currentVersion, scheme)
@@ -95,14 +104,34 @@ func (b *Bumper) Bump(part string, opts BumpOptions) (*output.BumpResult, error)
 		ChangedFiles: []string{},
 	}
 
-	// Update files
-	for name, fileConfig := range b.config.Files {
-		handler, err := b.getHandler(fileConfig)
+	// Update files from simple paths list (auto-detect handler)
+	for _, path := range b.config.Files.Paths {
+		handler, err := files.DetectHandler(path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to detect handler for %s: %w", path, err)
+		}
+
+		if opts.DryRun {
+			b.printer.Println("Would update %s", path)
+		} else {
+			b.printer.Println("Updating %s", path)
+		}
+
+		if err := handler.Write(path, currentVersion, newVersion, opts.DryRun); err != nil {
+			return nil, fmt.Errorf("failed to update %s: %w", path, err)
+		}
+
+		result.ChangedFiles = append(result.ChangedFiles, path)
+	}
+
+	// Update files from detailed handlers
+	for name, handlerCfg := range b.config.Handlers {
+		handler, err := b.getHandler(handlerCfg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get handler for %s: %w", name, err)
 		}
 
-		for _, path := range fileConfig.Paths {
+		for _, path := range handlerCfg.Paths {
 			if opts.DryRun {
 				b.printer.Println("Would update %s", path)
 			} else {
@@ -127,14 +156,17 @@ func (b *Bumper) Bump(part string, opts BumpOptions) (*output.BumpResult, error)
 	}
 
 	// Git operations
-	if b.config.Git.Enable && !opts.NoGit && !opts.DryRun {
+	// Run git ops if: (config enabled OR explicit flag) AND not disabled
+	enableGit := (b.config.Git.Enable || opts.GitCommit || opts.GitTag) && !opts.NoGit
+	if enableGit && !opts.DryRun {
 		// Stage files
 		if err := b.git.Add(result.ChangedFiles...); err != nil {
 			return nil, fmt.Errorf("failed to stage files: %w", err)
 		}
 
-		// Commit
-		if b.config.Git.Commit && !opts.NoCommit {
+		// Commit: enabled by config or explicit flag, not disabled
+		doCommit := (b.config.Git.Commit || opts.GitCommit) && !opts.NoCommit
+		if doCommit {
 			message := b.config.Git.CommitMessage
 			if opts.Message != "" {
 				message = opts.Message
@@ -149,8 +181,9 @@ func (b *Bumper) Bump(part string, opts BumpOptions) (*output.BumpResult, error)
 			result.GitCommit = hash
 		}
 
-		// Tag
-		if b.config.Git.Tag && !opts.NoTag {
+		// Tag: enabled by config or explicit flag, not disabled
+		doTag := (b.config.Git.Tag || opts.GitTag) && !opts.NoTag
+		if doTag {
 			tagName := b.config.Git.TagName
 			if opts.TagName != "" {
 				tagName = opts.TagName
@@ -177,15 +210,8 @@ func (b *Bumper) Bump(part string, opts BumpOptions) (*output.BumpResult, error)
 	return result, nil
 }
 
-// Show returns the current version.
-func (b *Bumper) Show() (*output.ShowResult, error) {
-	return &output.ShowResult{
-		Version: b.config.Project.CurrentVersion,
-	}, nil
-}
-
 // getHandler returns the appropriate file handler.
-func (b *Bumper) getHandler(cfg config.FileConfig) (files.Handler, error) {
+func (b *Bumper) getHandler(cfg config.HandlerConfig) (files.Handler, error) {
 	if cfg.Type == "regex" {
 		return files.NewRegexHandler(cfg.Pattern, cfg.Replacement)
 	}
@@ -200,4 +226,35 @@ func (b *Bumper) replaceVersionPlaceholders(template, oldVersion, newVersion str
 	result = strings.Replace(result, "{old_version}", oldVersion, -1)
 	result = strings.Replace(result, "{current_version}", oldVersion, -1)
 	return result
+}
+
+// discoverVersion attempts to read version from configured files.
+func (b *Bumper) discoverVersion() (string, error) {
+	// Try simple paths first
+	for _, path := range b.config.Files.Paths {
+		handler, err := files.DetectHandler(path)
+		if err != nil {
+			continue
+		}
+		ver, err := handler.Read(path)
+		if err == nil && ver != "" {
+			return ver, nil
+		}
+	}
+
+	// Try handlers
+	for _, handlerCfg := range b.config.Handlers {
+		handler, err := b.getHandler(handlerCfg)
+		if err != nil {
+			continue
+		}
+		for _, path := range handlerCfg.Paths {
+			ver, err := handler.Read(path)
+			if err == nil && ver != "" {
+				return ver, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no version found in configured files")
 }

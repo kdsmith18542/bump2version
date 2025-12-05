@@ -1,159 +1,122 @@
-# bumpx CLI Reference
-
-## Global Flags
-
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--config` | `-c` | Config file path (default: `.bumpx.toml`) |
-| `--json` | | Output in JSON format |
-| `--help` | `-h` | Show help |
-| `--version` | `-v` | Show version |
+# Command Line Interface
 
 ## Commands
 
-### `bumpx init`
+### bumpx show
 
-Initialize a new bumpx configuration file.
+Show the current project version as understood from config.
 
+**Usage:**
 ```bash
-bumpx init [flags]
-```
-
-**Flags:**
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--yes` | `-y` | Non-interactive, accept defaults |
-| `--scheme` | | Version scheme (default: `semver`) |
-
-**Examples:**
-```bash
-# Create config interactively
-bumpx init
-
-# Create config with defaults
-bumpx init --yes
-
-# Create config with CalVer
-bumpx init --scheme "calver:YYYY.MM.DD"
-```
-
-### `bumpx show`
-
-Display the current project version.
-
-```bash
-bumpx show [flags]
-```
-
-**Examples:**
-```bash
-# Show version
 bumpx show
-# Output: 1.2.3
-
-# Show version as JSON
-bumpx show --json
-# Output: {"version": "1.2.3"}
 ```
 
-### `bumpx bump`
+**Options:**
+- `--json`: Output in JSON format
+- `-c, --config`: Config file (default is .bumpx.toml)
+- `-h, --help`: Help for show command
+
+### bumpx bump <part>
 
 Bump the version and update all configured files.
 
+**Usage:**
 ```bash
-bumpx bump <part> [flags]
+bumpx bump <part>
 ```
 
-**Arguments:**
-| Argument | Description |
-|----------|-------------|
-| `part` | Version part to bump |
+For SemVer: major, minor, patch, pre, build
+For CalVer: date, build
 
-**Version Parts by Scheme:**
-
-| Scheme | Parts |
-|--------|-------|
-| SemVer | `major`, `minor`, `patch`, `pre`, `build` |
-| CalVer | `date`, `build` |
-
-**Flags:**
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--dry-run` | `-n` | Preview changes without writing |
-| `--no-git` | | Skip git operations |
-| `--no-tag` | | Skip tag creation |
-| `--no-commit` | | Skip commit creation |
-| `--message` | `-m` | Override commit message |
-| `--tag-name` | | Override tag name |
+**Options:**
+- `-n, --dry-run`: Don't write any files, just pretend
+- `--no-git`: Ignore git settings in config
+- `--no-tag`: Do not create a tag
+- `--no-commit`: Do not commit
+- `-m, --message`: Override commit message
+- `--tag-name`: Override tag name
+- `--json`: Output in JSON format
+- `-c, --config`: Config file (default is .bumpx.toml)
+- `-h, --help`: Help for bump command
 
 **Examples:**
 ```bash
+bumpx bump major    # 1.0.0 -> 2.0.0
+bumpx bump minor    # 1.0.0 -> 1.1.0
+bumpx bump patch    # 1.0.0 -> 1.0.1
+bumpx bump pre      # 1.0.0 -> 1.0.0-alpha.1
+bumpx bump build    # 1.0.0 -> 1.0.0+1
+```
+
+### bumpx init
+
+Create a starter .bumpx.toml in the current directory.
+
+**Usage:**
+```bash
+bumpx init
+```
+
+Scans common files (Cargo.toml, package.json, go.mod, etc.) and attempts to infer current version.
+
+**Options:**
+- `-y, --yes`: Non-interactive, accept defaults
+- `--scheme`: Version scheme (default "semver")
+- `-c, --config`: Config file (default is .bumpx.toml)
+- `-h, --help`: Help for init command
+
+### bumpx validate
+
+Validate .bumpx.toml and exit.
+
+**Usage:**
+```bash
+bumpx validate
+```
+
+**Options:**
+- `--strict`: Treat missing paths as errors
+- `--json`: Output in JSON format
+- `-c, --config`: Config file (default is .bumpx.toml)
+- `-h, --help`: Help for validate command
+
+## Global Options
+
+- `-c, --config`: Config file (default is .bumpx.toml)
+- `--json`: Output in JSON format
+- `-h, --help`: Help for bumpx
+- `-v, --version`: Version for bumpx
+
+## Exit Codes
+
+- 0: Success
+- 1: Generic failure
+- 2: Configuration error (invalid config, missing fields)
+- 3: Version parsing/bumping error
+- 4: File IO or pattern-matching error
+- 5: Git-related error (dirty repo, commit/tag failure)
+
+## Examples
+
+```bash
+# Show current version
+bumpx show
+
+# Show in JSON format
+bumpx show --json
+
 # Bump minor version
 bumpx bump minor
 
-# Bump major version (dry run)
-bumpx bump major --dry-run
+# Dry-run bump (preview changes)
+bumpx bump minor --dry-run
 
-# Bump patch with custom commit message
-bumpx bump patch -m "Release v{version}"
+# Bump with custom commit message
+bumpx bump patch -m "Release patch version"
 
-# Bump without git operations
-bumpx bump minor --no-git
-
-# Bump with JSON output
-bumpx bump patch --json
-# Output: {"old_version":"1.2.3","new_version":"1.2.4","part":"patch","changed_files":["Cargo.toml"],"git_commit":"abc1234","git_tag":"v1.2.4"}
-```
-
-### `bumpx validate`
-
-Validate the configuration file.
-
-```bash
-bumpx validate [flags]
-```
-
-**Flags:**
-| Flag | Description |
-|------|-------------|
-| `--strict` | Treat missing file paths as errors |
-
-**Examples:**
-```bash
-# Validate config
+# Validate configuration
 bumpx validate
 
 # Validate with strict mode
 bumpx validate --strict
-
-# Validate with JSON output
-bumpx validate --json
 ```
-
-## Exit Codes
-
-| Code | Description |
-|------|-------------|
-| 0 | Success |
-| 1 | Generic failure |
-| 2 | Configuration error |
-| 3 | Version parsing/bumping error |
-| 4 | File IO or pattern-matching error |
-| 5 | Git-related error |
-
-## Environment Variables
-
-bumpx respects the following environment variables:
-
-| Variable | Description |
-|----------|-------------|
-| `BUMPX_CONFIG` | Path to config file (overrides `--config`) |
-
-When running hooks, bumpx sets these variables:
-
-| Variable | Description |
-|----------|-------------|
-| `BUMPX_OLD_VERSION` | Previous version |
-| `BUMPX_NEW_VERSION` | New version |
-| `BUMPX_PART` | Part being bumped |
-| `BUMPX_CONFIG_PATH` | Path to config file |

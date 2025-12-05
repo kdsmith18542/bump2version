@@ -1,14 +1,13 @@
-// Package output provides output formatting utilities.
+// Package output provides human-readable output formatting utilities.
 package output
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 )
 
-// Printer handles output formatting.
+// Printer handles human-readable output formatting.
 type Printer struct {
 	writer    io.Writer
 	errWriter io.Writer
@@ -50,11 +49,13 @@ func (p *Printer) Warning(format string, args ...interface{}) {
 	fmt.Fprintf(p.errWriter, "Warning: "+format+"\n", args...)
 }
 
-// JSON outputs data as JSON.
+// JSON outputs data as JSON when in json mode.
 func (p *Printer) JSON(data interface{}) error {
-	encoder := json.NewEncoder(p.writer)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(data)
+	if p.jsonMode {
+		jsonPrinter := NewJSONPrinter()
+		return jsonPrinter.JSON(data)
+	}
+	return nil // If not in JSON mode, just return
 }
 
 // ShowResult represents the result of a show command.
@@ -67,9 +68,9 @@ type BumpResult struct {
 	OldVersion   string   `json:"old_version"`
 	NewVersion   string   `json:"new_version"`
 	Part         string   `json:"part"`
-	ChangedFiles []string `json:"changed_files,omitempty"`
-	GitCommit    string   `json:"git_commit,omitempty"`
-	GitTag       string   `json:"git_tag,omitempty"`
+	ChangedFiles []string `json:"files_changed,omitempty"`
+	GitCommit    string   `json:"git_committed,omitempty"`
+	GitTag       string   `json:"git_tagged,omitempty"`
 }
 
 // ValidationResult represents the result of a validate command.

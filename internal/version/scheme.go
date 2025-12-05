@@ -28,7 +28,13 @@ func Parse(version string, scheme Scheme) (Version, error) {
 		return ParseSemVer(version)
 	case SchemeCalVer:
 		return ParseCalVer(version)
+	case SchemeCustom:
+		return ParseCustom(version, "") // Basic custom parsing (template would be extracted from scheme string)
 	default:
+		// If scheme string starts with "custom:", treat as custom
+		if len(string(scheme)) > 7 && string(scheme)[:7] == "custom:" {
+			return ParseCustom(version, string(scheme)[7:]) // Extract template after "custom:"
+		}
 		// Default to SemVer
 		return ParseSemVer(version)
 	}

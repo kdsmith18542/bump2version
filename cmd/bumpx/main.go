@@ -16,15 +16,23 @@ var (
 	Version = "0.1.0"
 )
 
+// Exit codes per specification
+const (
+	ExitSuccess        = 0 // success
+	ExitUsageError     = 1 // usage or validation error
+	ExitOperationError = 2 // operation failed (file I/O, parse errors)
+)
+
 var (
-	cfgFile    string
-	jsonOutput bool
+	cfgFile      string
+	outputFormat string
 )
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		// Cobra already handles usage errors with exit code 1
+		os.Exit(ExitUsageError)
 	}
 }
 
@@ -69,12 +77,14 @@ var validateCmd = &cobra.Command{
 
 // Bump command flags
 var (
-	dryRun   bool
-	noGit    bool
-	noTag    bool
-	noCommit bool
-	message  string
-	tagName  string
+	dryRun    bool
+	noGit     bool
+	gitCommit bool
+	gitTag    bool
+	noTag     bool
+	noCommit  bool
+	message   string
+	tagName   string
 )
 
 // Init command flags
@@ -90,7 +100,7 @@ var (
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is .bumpx.toml)")
-	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "output in JSON format")
+	rootCmd.PersistentFlags().StringVar(&outputFormat, "format", "human", "output format: human or json")
 
 	// Show command
 	rootCmd.AddCommand(showCmd)
@@ -98,6 +108,8 @@ func init() {
 	// Bump command
 	bumpCmd.Flags().BoolVarP(&dryRun, "dry-run", "n", false, "don't write any files, just pretend")
 	bumpCmd.Flags().BoolVar(&noGit, "no-git", false, "ignore git settings in config")
+	bumpCmd.Flags().BoolVar(&gitCommit, "git-commit", false, "create a git commit (overrides config)")
+	bumpCmd.Flags().BoolVar(&gitTag, "git-tag", false, "create a git tag (overrides config)")
 	bumpCmd.Flags().BoolVar(&noTag, "no-tag", false, "do not create a tag")
 	bumpCmd.Flags().BoolVar(&noCommit, "no-commit", false, "do not commit")
 	bumpCmd.Flags().StringVarP(&message, "message", "m", "", "override commit message")
@@ -134,19 +146,19 @@ func loadConfig() (*config.Config, string, error) {
 }
 
 func runShow(_ *cobra.Command, _ []string) error {
-	cfg, configPath, err := loadConfig()
+	cfg, _, err := loadConfig()
 	if err != nil {
 		return err
 	}
 
-	bumper := core.NewBumper(cfg, configPath, jsonOutput)
-	result, err := bumper.Show()
+	result, err := core.Show(cfg)
 	if err != nil {
 		return err
 	}
 
-	printer := output.NewPrinter(jsonOutput)
-	if jsonOutput {
+	jsonMode := outputFormat == "json"
+	printer := output.NewPrinter(jsonMode)
+	if jsonMode {
 		return printer.JSON(result)
 	}
 
@@ -159,27 +171,34 @@ func runBump(_ *cobra.Command, args []string) error {
 
 	cfg, configPath, err := loadConfig()
 	if err != nil {
-		return err
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(ExitOperationError)
+		return nil
 	}
 
-	bumper := core.NewBumper(cfg, configPath, jsonOutput)
+	jsonMode := outputFormat == "json"
+	bumper := core.NewBumper(cfg, configPath, jsonMode)
 	opts := core.BumpOptions{
-		DryRun:   dryRun,
-		NoGit:    noGit,
-		NoTag:    noTag,
-		NoCommit: noCommit,
-		Message:  message,
-		TagName:  tagName,
-		JSON:     jsonOutput,
+		DryRun:    dryRun,
+		NoGit:     noGit,
+		GitCommit: gitCommit,
+		GitTag:    gitTag,
+		NoTag:     noTag,
+		NoCommit:  noCommit,
+		Message:   message,
+		TagName:   tagName,
+		JSON:      jsonMode,
 	}
 
 	result, err := bumper.Bump(part, opts)
 	if err != nil {
-		return err
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(ExitOperationError)
+		return nil
 	}
 
-	printer := output.NewPrinter(jsonOutput)
-	if jsonOutput {
+	printer := output.NewPrinter(jsonMode)
+	if jsonMode {
 		return printer.JSON(result)
 	}
 
@@ -209,16 +228,13 @@ func runInit(_ *cobra.Command, _ []string) error {
 	cfg.Project.VersionScheme = initScheme
 
 	// Try to detect files in the current directory
-	detectedFiles := detectProjectFiles()
-	for name, fileConfig := range detectedFiles {
-		cfg.Files[name] = fileConfig
-	}
+	cfg.Files.Paths = detectProjectFiles()
 
 	if err := config.SaveConfig(cfg, configPath); err != nil {
 		return err
 	}
 
-	printer := output.NewPrinter(jsonOutput)
+	printer := output.NewPrinter(outputFormat == "json")
 	printer.Println("Created %s", configPath)
 
 	return nil
@@ -232,9 +248,10 @@ func runValidate(_ *cobra.Command, _ []string) error {
 
 	result := config.Validate(cfg, validateStrict)
 
-	printer := output.NewPrinter(jsonOutput)
+	jsonMode := outputFormat == "json"
+	printer := output.NewPrinter(jsonMode)
 
-	if jsonOutput {
+	if jsonMode {
 		jsonResult := output.ValidationResult{
 			Valid:    result.Valid,
 			Warnings: result.Warnings,
@@ -265,32 +282,26 @@ func runValidate(_ *cobra.Command, _ []string) error {
 	}
 
 	if !result.Valid {
-		os.Exit(2)
+		os.Exit(ExitOperationError)
 	}
 
 	return nil
 }
 
-func detectProjectFiles() map[string]config.FileConfig {
-	detected := make(map[string]config.FileConfig)
+func detectProjectFiles() []string {
+	var detected []string
 
 	// Common project files to detect
-	filesToCheck := map[string]struct {
-		name     string
-		fileType string
-	}{
-		"Cargo.toml":     {"cargo", "cargo"},
-		"package.json":   {"npm", "npm"},
-		"go.mod":         {"gomod", "gomod"},
-		"pyproject.toml": {"python", "pyproject"},
+	filesToCheck := []string{
+		"Cargo.toml",
+		"package.json",
+		"go.mod",
+		"pyproject.toml",
 	}
 
-	for filename, info := range filesToCheck {
+	for _, filename := range filesToCheck {
 		if _, err := os.Stat(filename); err == nil {
-			detected[info.name] = config.FileConfig{
-				Paths: []string{filename},
-				Type:  info.fileType,
-			}
+			detected = append(detected, filename)
 		}
 	}
 

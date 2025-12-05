@@ -22,7 +22,10 @@ name = "test-project"
 current_version = "1.2.3"
 version_scheme = "semver"
 
-[files.cargo]
+[files]
+paths = ["package.json"]
+
+[handlers.cargo]
 paths = ["Cargo.toml"]
 type = "cargo"
 
@@ -61,10 +64,15 @@ post_bump = ""
 		t.Errorf("Project.VersionScheme = %s, want semver", cfg.Project.VersionScheme)
 	}
 
-	// Check file config
-	cargoConfig, ok := cfg.Files["cargo"]
+	// Check files config
+	if len(cfg.Files.Paths) != 1 || cfg.Files.Paths[0] != "package.json" {
+		t.Errorf("Files.Paths = %v, want [package.json]", cfg.Files.Paths)
+	}
+
+	// Check handler config
+	cargoConfig, ok := cfg.Handlers["cargo"]
 	if !ok {
-		t.Error("Missing 'cargo' file config")
+		t.Error("Missing 'cargo' handler config")
 	} else {
 		if len(cargoConfig.Paths) != 1 || cargoConfig.Paths[0] != "Cargo.toml" {
 			t.Errorf("cargo.Paths = %v, want [Cargo.toml]", cargoConfig.Paths)

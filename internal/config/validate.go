@@ -52,46 +52,63 @@ func Validate(config *Config, strict bool) *ValidationResult {
 		}
 	}
 
-	// Validate file configurations
-	for name, fileConfig := range config.Files {
-		// Validate type
-		validTypes := map[string]bool{
-			"cargo":     true,
-			"npm":       true,
-			"gomod":     true,
-			"pyproject": true,
-			"dotnet":    true,
-			"regex":     true,
+	// Validate files.paths
+	for _, path := range config.Files.Paths {
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			if strict {
+				result.Errors = append(result.Errors, ValidationError{
+					Field:   "files.paths",
+					Message: fmt.Sprintf("file not found: %s", path),
+				})
+				result.Valid = false
+			} else {
+				result.Warnings = append(result.Warnings,
+					fmt.Sprintf("files.paths: file not found: %s", path))
+			}
 		}
-		if !validTypes[fileConfig.Type] {
+	}
+
+	// Validate handler configurations
+	validTypes := map[string]bool{
+		"cargo":     true,
+		"npm":       true,
+		"gomod":     true,
+		"pyproject": true,
+		"dotnet":    true,
+		"regex":     true,
+	}
+
+	for name, handlerConfig := range config.Handlers {
+		// Validate type
+		if !validTypes[handlerConfig.Type] {
 			result.Errors = append(result.Errors, ValidationError{
-				Field:   fmt.Sprintf("files.%s.type", name),
-				Message: fmt.Sprintf("invalid file type: %s (valid: cargo, npm, gomod, pyproject, dotnet, regex)", fileConfig.Type),
+				Field:   fmt.Sprintf("handlers.%s.type", name),
+				Message: fmt.Sprintf("invalid file type: %s (valid: cargo, npm, gomod, pyproject, dotnet, regex)", handlerConfig.Type),
 			})
 			result.Valid = false
 		}
 
 		// Validate regex type has pattern
-		if fileConfig.Type == "regex" && fileConfig.Pattern == "" {
+		if handlerConfig.Type == "regex" && handlerConfig.Pattern == "" {
 			result.Errors = append(result.Errors, ValidationError{
-				Field:   fmt.Sprintf("files.%s.pattern", name),
+				Field:   fmt.Sprintf("handlers.%s.pattern", name),
 				Message: "pattern is required for regex type",
 			})
 			result.Valid = false
 		}
 
 		// Check if paths exist
-		for _, path := range fileConfig.Paths {
+		for _, path := range handlerConfig.Paths {
 			if _, err := os.Stat(path); os.IsNotExist(err) {
 				if strict {
 					result.Errors = append(result.Errors, ValidationError{
-						Field:   fmt.Sprintf("files.%s.paths", name),
+						Field:   fmt.Sprintf("handlers.%s.paths", name),
 						Message: fmt.Sprintf("file not found: %s", path),
 					})
 					result.Valid = false
 				} else {
 					result.Warnings = append(result.Warnings,
-						fmt.Sprintf("files.%s: file not found: %s", name, path))
+						fmt.Sprintf("handlers.%s: file not found: %s", name, path))
 				}
 			}
 		}

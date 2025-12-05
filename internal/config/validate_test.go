@@ -19,7 +19,8 @@ func TestValidate(t *testing.T) {
 					CurrentVersion: "1.0.0",
 					VersionScheme:  "semver",
 				},
-				Files: make(map[string]FileConfig),
+				Files:    FilesConfig{Paths: []string{}},
+				Handlers: make(map[string]HandlerConfig),
 			},
 			wantValid:  true,
 			wantErrors: 0,
@@ -30,7 +31,8 @@ func TestValidate(t *testing.T) {
 				Project: ProjectConfig{
 					VersionScheme: "semver",
 				},
-				Files: make(map[string]FileConfig),
+				Files:    FilesConfig{Paths: []string{}},
+				Handlers: make(map[string]HandlerConfig),
 			},
 			wantValid:  false,
 			wantErrors: 1,
@@ -42,7 +44,8 @@ func TestValidate(t *testing.T) {
 					CurrentVersion: "1.0.0",
 					VersionScheme:  "invalid",
 				},
-				Files: make(map[string]FileConfig),
+				Files:    FilesConfig{Paths: []string{}},
+				Handlers: make(map[string]HandlerConfig),
 			},
 			wantValid:  false,
 			wantErrors: 1,
@@ -54,19 +57,21 @@ func TestValidate(t *testing.T) {
 					CurrentVersion: "2024.01.15",
 					VersionScheme:  "calver:YYYY.MM.DD",
 				},
-				Files: make(map[string]FileConfig),
+				Files:    FilesConfig{Paths: []string{}},
+				Handlers: make(map[string]HandlerConfig),
 			},
 			wantValid:  true,
 			wantErrors: 0,
 		},
 		{
-			name: "invalid file type",
+			name: "invalid handler type",
 			config: &Config{
 				Project: ProjectConfig{
 					CurrentVersion: "1.0.0",
 					VersionScheme:  "semver",
 				},
-				Files: map[string]FileConfig{
+				Files: FilesConfig{Paths: []string{}},
+				Handlers: map[string]HandlerConfig{
 					"test": {
 						Paths: []string{"test.txt"},
 						Type:  "invalid",
@@ -83,7 +88,8 @@ func TestValidate(t *testing.T) {
 					CurrentVersion: "1.0.0",
 					VersionScheme:  "semver",
 				},
-				Files: map[string]FileConfig{
+				Files: FilesConfig{Paths: []string{}},
+				Handlers: map[string]HandlerConfig{
 					"test": {
 						Paths: []string{"test.txt"},
 						Type:  "regex",
@@ -100,7 +106,8 @@ func TestValidate(t *testing.T) {
 					CurrentVersion: "1.0.0",
 					VersionScheme:  "semver",
 				},
-				Files: map[string]FileConfig{
+				Files: FilesConfig{Paths: []string{}},
+				Handlers: map[string]HandlerConfig{
 					"test": {
 						Paths:       []string{"test.txt"},
 						Type:        "regex",
