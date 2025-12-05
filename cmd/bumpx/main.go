@@ -77,14 +77,15 @@ var validateCmd = &cobra.Command{
 
 // Bump command flags
 var (
-	dryRun    bool
-	noGit     bool
-	gitCommit bool
-	gitTag    bool
-	noTag     bool
-	noCommit  bool
-	message   string
-	tagName   string
+	dryRun     bool
+	noGit      bool
+	gitCommit  bool
+	gitTag     bool
+	noTag      bool
+	noCommit   bool
+	allowDirty bool
+	message    string
+	tagName    string
 )
 
 // Init command flags
@@ -112,6 +113,7 @@ func init() {
 	bumpCmd.Flags().BoolVar(&gitTag, "git-tag", false, "create a git tag (overrides config)")
 	bumpCmd.Flags().BoolVar(&noTag, "no-tag", false, "do not create a tag")
 	bumpCmd.Flags().BoolVar(&noCommit, "no-commit", false, "do not commit")
+	bumpCmd.Flags().BoolVar(&allowDirty, "allow-dirty", false, "allow operation on dirty working directory")
 	bumpCmd.Flags().StringVarP(&message, "message", "m", "", "override commit message")
 	bumpCmd.Flags().StringVar(&tagName, "tag-name", "", "override tag name")
 	rootCmd.AddCommand(bumpCmd)
@@ -179,15 +181,16 @@ func runBump(_ *cobra.Command, args []string) error {
 	jsonMode := outputFormat == "json"
 	bumper := core.NewBumper(cfg, configPath, jsonMode)
 	opts := core.BumpOptions{
-		DryRun:    dryRun,
-		NoGit:     noGit,
-		GitCommit: gitCommit,
-		GitTag:    gitTag,
-		NoTag:     noTag,
-		NoCommit:  noCommit,
-		Message:   message,
-		TagName:   tagName,
-		JSON:      jsonMode,
+		DryRun:     dryRun,
+		NoGit:      noGit,
+		GitCommit:  gitCommit,
+		GitTag:     gitTag,
+		NoTag:      noTag,
+		NoCommit:   noCommit,
+		AllowDirty: allowDirty,
+		Message:    message,
+		TagName:    tagName,
+		JSON:       jsonMode,
 	}
 
 	result, err := bumper.Bump(part, opts)
